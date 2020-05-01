@@ -2,9 +2,16 @@
 
 Python With No-GIL (Global Interpreter Lock)
 
-# Build
 
-First, manually build `libuv`:
+## Build
+
+First, init submodules:
+```
+git submodule init
+git submodule update
+```
+
+Second, manually build `libuv`:
 ```
 cd libuv
 ./autogen.sh
@@ -12,13 +19,20 @@ cd libuv
 make
 ```
 
-Second, go back to project root dir:
+Third, go back to project root dir:
 ```
 cd ..
 ```
 
-And build `pynogil`:
+Forth, build `pynogil`:
 ```
 make clean
 make
+```
+
+
+## Run
+
+```
+./pynogil example1.py
 ```
