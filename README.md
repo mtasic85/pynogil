@@ -5,26 +5,41 @@ Python With No-GIL (Global Interpreter Lock)
 
 ## Build
 
-First, init submodules:
+Init submodules:
 ```
 git submodule init
 git submodule update
 ```
 
-Second, manually build `libuv`:
+Manually build `libuv`:
 ```
 cd libuv
 ./autogen.sh
 ./configure
 make
-```
-
-Third, go back to project root dir:
-```
 cd ..
 ```
 
-Forth, build `pynogil`:
+Manually build `duktape`.
+On ArchLinux: `sudo pacman -S python2-virtualenv python2-pip`.
+
+```
+cd duktape
+virtualenv2 venv
+source venv/bin/activate
+pip install pyyaml
+python util/dist.py
+cd ..
+```
+
+Manually build `brython`:
+```
+cd brython/setup
+python setup.py build
+cd ../..
+```
+
+Build `pynogil`:
 ```
 make clean
 make
@@ -35,4 +50,7 @@ make
 
 ```
 ./pynogil example1.py
+
+# or
+clean; make clean; make; ./pynogil example1.py
 ```

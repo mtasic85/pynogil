@@ -1,12 +1,14 @@
 CC=gcc
 
-UV_PATH=$(shell pwd)/libuv-1.37.0
+UV_PATH=$(shell pwd)/libuv
 UV_LIBS_PATH=$(UV_PATH)/.libs
 UV_LIB=$(UV_LIBS_PATH)/libuv.a
 
-CFLAGS=-Wall -O0 -g -std=c11 -D_XOPEN_SOURCE=600 -I/usr/include -I$(UV_PATH)/include
+DUKTAPE_PATH=$(shell pwd)/duktape/dist/src
+
+CFLAGS=-Wall -O0 -g -std=c11 -D_XOPEN_SOURCE=600 -I$(UV_PATH)/include -I$(DUKTAPE_PATH)
 LDFLAGS=-L/usr/lib -lc -ldl -lpthread -lm -lrt
-SOURCES=main.c
+SOURCES=$(DUKTAPE_PATH)/duktape.c main.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=pynogil
 
