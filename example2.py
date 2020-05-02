@@ -1,7 +1,7 @@
 from queue import Queue
 from threading import Thread
 
-N = 100_000_000
+N = 1_000_000
 N_THREADS = 10
 
 q = Queue()

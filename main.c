@@ -5,111 +5,252 @@
 #include <unistd.h>
 #include <uv.h>
 #include <duktape.h>
+#include <duk_console.h>
+#include <duk_module_node.h>
+#include "pynogil.h"
 
-uv_fs_t open_req;
-uv_fs_t read_req;
-
-static char buffer[1024];
-static uv_buf_t iov;
+#define DEBUG
 static int exit_status;
+static duk_idx_t uv_handle_idx;
 
-static duk_ret_t native_print(duk_context *ctx) {
-    duk_push_string(ctx, " ");
-    duk_insert(ctx, 0);
-    duk_join(ctx, duk_get_top(ctx) - 1);
-    printf("%s\n", duk_safe_to_string(ctx, -1));
-    return 0;
+duk_ret_t cb_resolve_module(duk_context *ctx) {
+    /*
+     *  Entry stack: [ requested_id parent_id ]
+     */
+    const char *requested_id = duk_get_string(ctx, 0);
+    const char *parent_id = duk_get_string(ctx, 1);  /* calling module */
+    const char *resolved_id;
+
+    /* Arrive at the canonical module ID somehow. */
+    duk_push_sprintf(ctx, "%s.js", requested_id);
+    resolved_id = duk_get_string(ctx, -1);
+
+    #ifdef DEBUG
+    printf("DEBUG resolve_cb: requested_id: '%s', parent_id: '%s', resolved_id: '%s'\n", requested_id, parent_id, resolved_id);
+    #endif
+
+    return 1;  /*nrets*/
 }
 
-static duk_ret_t native_adder(duk_context *ctx) {
-    int i;
-    int n = duk_get_top(ctx);  /* #args */
-    double res = 0.0;
+duk_ret_t cb_load_module(duk_context *ctx) {
+    /*
+     *  Entry stack: [ resolved_id exports module ]
+     */
+    const char *module_id;
+    const char *filename;
+    char *module_source = NULL;
 
-    for (i = 0; i < n; i++) {
-        res += duk_to_number(ctx, i);
+    // get uv_handle from global namespace
+    // FIXME: needs to be more secure
+    (void) duk_get_global_string(ctx, "__uv_handle");
+    const char *__uv_handle = duk_get_string(ctx, -1);
+    void *_uv_handle_p;
+    sscanf(__uv_handle, "%p", &_uv_handle_p);
+    uv_handle_t *uv_handle = _uv_handle_p;
+    
+    #ifdef DEBUG
+    printf("DEBUG cb_load_module __uv_handle: '%s'\n", __uv_handle);
+    printf("DEBUG cb_load_module _uv_handle_p: %p\n", _uv_handle_p);
+    printf("DEBUG cb_load_module uv_handle: %p\n", uv_handle);
+    #endif
+
+    uv_loop_t *loop = uv_handle_get_loop(uv_handle);
+
+    module_id = duk_require_string(ctx, 0);
+    duk_get_prop_string(ctx, 2, "filename");
+    filename = duk_require_string(ctx, -1);
+
+    #ifdef DEBUG
+    printf("DEBUG load_cb: module_id:'%s', filename:'%s'\n", module_id, filename);
+    #endif
+
+    module_source = read_from_path(loop, module_id);
+
+    if (!module_source) {
+        (void) duk_type_error(ctx, "cannot find module: '%s'", module_id);
+        goto cleanup;
     }
 
-    duk_push_number(ctx, res);
-    return 1;  /* one return value */
+    // FIXME: what happens with module_source memory allocated ?!
+    duk_push_string(ctx, module_source);
+
+    cleanup:
+        ;
+
+    return 1;  /*nrets*/
 }
 
-char* compile_py2js(char* python_code) {
+char *compile_py2js(uv_handle_t *uv_handle, char *python_code) {
+    #ifdef DEBUG
+    printf("DEBUG python_code:\n");
     printf("%s", python_code);
+    #endif
+
     return NULL;
 }
 
-int exec_js_code(char* js_code) {
+int exec_js_code(uv_handle_t *uv_handle, char *js_code) {
+    // init
     duk_context *ctx = duk_create_heap_default();
+    
+    if (!ctx) {
+        printf("error, could not create duktape context\n");
+        return 1; // sys exit
+    }
 
-    // (void) argc; (void) argv;  /* suppress warning */
+    /* 
+     * modeule-node
+     * After initializing the Duktape heap or when creating a new
+     * thread with a new global environment:
+     */
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, cb_resolve_module, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "resolve");
+    duk_push_c_function(ctx, cb_load_module, DUK_VARARGS);
+    duk_put_prop_string(ctx, -2, "load");
+    duk_module_node_init(ctx);
 
-    duk_push_c_function(ctx, native_print, DUK_VARARGS);
-    duk_put_global_string(ctx, "print");
-    duk_push_c_function(ctx, native_adder, DUK_VARARGS);
-    duk_put_global_string(ctx, "adder");
+    /*
+     * console
+     */
+    duk_console_init(ctx, DUK_CONSOLE_PROXY_WRAPPER /*flags*/);
 
-    duk_eval_string(ctx, "print('Hello world!');");
+    // put uv_handle in global namespace
+    // FIXME: needs to be more secure
+    duk_push_sprintf(ctx, "%p", uv_handle);
+    (void) duk_put_global_string(ctx, "__uv_handle");
+    
+    #ifdef DEBUG
+    printf("DEBUG exec_js_code uv_handle: %p\n", uv_handle);
+    #endif
 
-    duk_eval_string(ctx, "print('2+3=' + adder(2, 3));");
+    /*
+     * compile python to javascript
+     */
+    duk_eval_string(ctx, "const r = 10; console.log(r); r;");
+    duk_eval_string(ctx, "const a = require('./a');");
+    duk_eval_string(ctx, "console.log(a);");
+    // duk_eval_string(ctx, "const r = 10; console.log(r); r");
+    // duk_eval_string(ctx, "const brython = require('./brython/www/src/brython.js');");
+    // duk_eval_string(ctx, "const brython = require('./a.js');");
+    // duk_eval_string(ctx, "console.log(brython);");
     duk_pop(ctx);  /* pop eval result */
 
+    //  cleanup
     duk_destroy_heap(ctx);
-    return 0;
+    return 0; // sys exit
 }
 
-void exec_python_code(char* python_code) {
+void exec_python_code(uv_handle_t *uv_handle, char *python_code) {
     // compile
-    char* js_code = compile_py2js(python_code);
+    char *js_code = compile_py2js(uv_handle, python_code);
 
     // exec
-    exit_status = exec_js_code(js_code);
+    exit_status = exec_js_code(uv_handle, js_code);
 
-    // cleanup
-    if (js_code) {
-        free(js_code);
-    }
+    // cleanup:
+    if (js_code) free(js_code);
 }
 
-void on_read(uv_fs_t* req) {
-    if (req->result < 0) {
-        fprintf(stderr, "Read error: %s\n", uv_strerror(req->result));
-    } else if (req->result == 0) {
-        uv_fs_t close_req;
-        // synchronous
-        uv_fs_close(req->loop, &close_req, open_req.result, NULL);
-    } else if (req->result > 0) {
-        char* python_code = iov.base;
-        exec_python_code(python_code);
+char *read_from_path(uv_loop_t *loop, const char *path) {
+    char *buffer = NULL;
+
+    // size of main file
+    uv_fs_t stat_req;
+    uint64_t main_size;
+    uv_fs_stat(loop, &stat_req, path, NULL);
+
+    if (stat_req.result < 0) {
+        printf("error, can't open file '%s' (stat)\n", path);
+        goto cleanup;
     }
+
+    main_size = stat_req.statbuf.st_size;
+
+    #ifdef DEBUG
+    printf("DEBUG main_size: %lu\n", main_size);
+    #endif
+
+    // open main file
+    uv_fs_t open_req;
+    uv_fs_open(loop, &open_req, path, O_RDONLY, 0, NULL); // sync
+
+    if (open_req.result < 0) {
+        printf("error, can't open file '%s' (open)\n", path);
+        goto cleanup;
+    }
+
+    // read main file
+    uv_fs_t read_req;
+    buffer = (char*) calloc(main_size, 1);
+    uv_buf_t buf = uv_buf_init(buffer, main_size);
+    uv_fs_read(loop, &read_req, open_req.result, &buf, 1, -1, NULL);
+
+    if (read_req.result < 0) {
+        printf("error, can't read file '%s'\n", path);
+        goto cleanup;
+    }
+
+    // close main file
+    uv_fs_t close_req;
+    uv_fs_close(loop, &close_req, open_req.result, NULL);
+
+    if (close_req.result < 0) {
+        printf("error, can't close file '%s'\n", path);
+        goto cleanup;
+    }
+
+    cleanup:
+        if (uv_fs_get_type(&stat_req) == UV_FS_STAT) uv_fs_req_cleanup(&stat_req);
+        if (uv_fs_get_type(&open_req) == UV_FS_OPEN) uv_fs_req_cleanup(&open_req);
+        if (uv_fs_get_type(&read_req) == UV_FS_READ) uv_fs_req_cleanup(&read_req);
+        if (uv_fs_get_type(&close_req) == UV_FS_CLOSE) uv_fs_req_cleanup(&close_req);
+
+    // make sure to free buffer when not needed anymore
+    return buffer;
 }
 
-void on_open(uv_fs_t* req) {
-    // The request passed to the callback is the same as the one the call setup
-    // function was passed.
-    assert(req == &open_req);
+void async_exec_python_code(uv_async_t *async) {
+    uv_handle_t *handle = (uv_handle_t*) async;
+    uv_loop_t *loop = uv_handle_get_loop(handle);
+
+    // main path
+    const char *main_path = (const char*)uv_handle_get_data(handle);
     
-    if (req->result >= 0) {
-        iov = uv_buf_init(buffer, sizeof(buffer));
-        uv_fs_read(req->loop, &read_req, req->result, &iov, 1, -1, on_read);
-    } else {
-        fprintf(stderr, "error opening file: %s\n", uv_strerror((int)req->result));
+    #ifdef DEBUG
+    printf("DEBUG main_path: '%s'\n", main_path);
+    #endif
+
+    // read main file
+    char *python_code = read_from_path(loop, main_path);
+
+    if (!python_code) {
+        printf("error, can't open/read file '%s'\n", main_path);
+        goto cleanup;
     }
+    
+    // exec main file
+    exec_python_code(handle, python_code);
+
+    cleanup:
+        if (python_code) free(python_code);
+        uv_close(handle, NULL);
 }
 
-int main(int argc, char** argv) {
-    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
+int main(int argc, char **argv) {
+    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     uv_loop_init(loop);
 
-    // open file
-    uv_fs_open(loop, &open_req, argv[1], O_RDONLY, 0, on_open);
+    // exec python code
+    uv_async_t exec_python_code_handle;
+    uv_async_init(loop, &exec_python_code_handle, async_exec_python_code);
+    uv_handle_set_data((uv_handle_t*) &exec_python_code_handle, (void*) argv[1]);
+    uv_async_send(&exec_python_code_handle);
 
     // run event loop
     uv_run(loop, UV_RUN_DEFAULT);
 
     // cleanup
-    uv_fs_req_cleanup(&open_req);
-    uv_fs_req_cleanup(&read_req);
     uv_loop_close(loop);
     free(loop);
     return exit_status;

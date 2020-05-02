@@ -32,13 +32,6 @@ python util/dist.py
 cd ..
 ```
 
-Manually build `brython`:
-```
-cd brython/setup
-python setup.py build
-cd ../..
-```
-
 Build `pynogil`:
 ```
 make clean

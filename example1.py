@@ -1,4 +1,4 @@
-N = 100_000_000
+N = 1_000_000
 
 a = list(range(N))
 b = list(range(N))
