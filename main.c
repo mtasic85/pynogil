@@ -1,5 +1,6 @@
 #include "pynogil.h"
 
+/*
 int main(int argc, char **argv) {
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     uv_loop_init(loop);
@@ -16,5 +17,13 @@ int main(int argc, char **argv) {
     // cleanup
     uv_loop_close(loop);
     free(loop);
+    return 0;
+}
+*/
+
+int main(int argc, char **argv) {
+    pyng_ctx_t *ctx = pyng_ctx_new();
+    int result = pyng_ctx_run_file(ctx, argv[1]);
+    pyng_ctx_del(ctx);
     return 0;
 }

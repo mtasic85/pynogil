@@ -11,17 +11,43 @@
 #include <duk_console.h>
 #include <duk_module_node.h>
 
-#define DEBUG
-static int exit_status;
-static duk_idx_t uv_handle_idx;
+#define DEBUG // FIXME: remove
+#define PYNG_DEBUG
 
-duk_ret_t cb_resolve_module(duk_context *ctx);
-duk_ret_t cb_load_module(duk_context *ctx);
-char *compile_py2js(uv_handle_t *uv_handle, char *python_code);
-static void my_fatal(void *udata, const char *msg);
-int exec_js_code(uv_handle_t *uv_handle, char *js_code);
-void exec_python_code(uv_handle_t *uv_handle, uv_buf_t buf);
-uv_buf_t read_from_path(uv_loop_t *loop, const char *path);
-void async_exec_python_code(uv_async_t *async);
+#ifdef PYNG_DEBUG
+#define PYNG_LOG_DEBUG(fmt, ...) printf("DEBUG " fmt "\n", __VA_ARGS__)
+#else
+#define PYNG_LOG_DEBUG(fmt, ...) ;
+#endif
+
+#ifdef PYNG_DEBUG
+#define PYNG_LOG_ERROR(fmt, ...) printf("ERROR " fmt "\n", __VA_ARGS__)
+#else
+#define PYNG_LOG_ERROR(fmt, ...) ;
+#endif
+
+#define PYNG_ERROR(fmt, ...) printf("error: " fmt "\n", ##__VA_ARGS__)
+
+/*
+ * duk_module_node
+ */
+duk_ret_t _cb_duk_resolve_module(duk_context *ctx);
+duk_ret_t _cb_duk_load_module(duk_context *ctx);
+
+/*
+ * pyng_ctx_*
+ */
+typedef struct pyng_ctx_t {
+    uv_loop_t *uv_loop;
+    duk_context *duk_ctx;
+} pyng_ctx_t;
+
+pyng_ctx_t *pyng_ctx_new(void);
+void _pyng_ctx_del_uv_loop(pyng_ctx_t *ctx);
+void _pyng_ctx_del_duk_ctx(pyng_ctx_t *ctx);
+void pyng_ctx_del(pyng_ctx_t *ctx);
+int pyng_ctx_run_file(pyng_ctx_t *ctx, const char *path);
+uv_buf_t pyng_ctx_read_file(pyng_ctx_t *ctx, const char *path);
+int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf);
 
 #endif
