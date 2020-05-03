@@ -1,21 +1,21 @@
 #include "pynogil.h"
 
-duk_ret_t _cb_duk_resolve_module(duk_context *ctx) {
+duk_ret_t _cb_duk_resolve_module(duk_context *duk_ctx) {
     /*
      *  Entry stack: [ requested_id parent_id ]
      */
-    const char *requested_id = duk_get_string(ctx, 0);
-    const char *parent_id = duk_get_string(ctx, 1);  /* calling module */
+    const char *requested_id = duk_get_string(duk_ctx, 0);
+    const char *parent_id = duk_get_string(duk_ctx, 1);  /* calling module */
     const char *resolved_id;
 
     /* Arrive at the canonical module ID somehow. */
-    duk_push_sprintf(ctx, "%s.js", requested_id);
-    resolved_id = duk_get_string(ctx, -1);
+    duk_push_sprintf(duk_ctx, "%s.js", requested_id);
+    resolved_id = duk_get_string(duk_ctx, -1);
     PYNG_LOG_DEBUG("_cb_duk_resolve_module requested_id: '%s', parent_id: '%s', resolved_id: '%s'", requested_id, parent_id, resolved_id);
     return 1;  /*nrets*/
 }
 
-duk_ret_t _cb_duk_load_module(duk_context *ctx) {
+duk_ret_t _cb_duk_load_module(duk_context *duk_ctx) {
     /*
      *  Entry stack: [ resolved_id exports module ]
      */
@@ -25,29 +25,28 @@ duk_ret_t _cb_duk_load_module(duk_context *ctx) {
 
     // get pyng_ctx from global namespace
     // FIXME: needs to be more secure
-    (void) duk_get_global_string(ctx, "__pyng_ctx");
-    const char *_pyng_ctx_s = duk_get_string(ctx, -1);
+    (void) duk_get_global_string(duk_ctx, "__pyng_ctx");
+    const char *_pyng_ctx_s = duk_get_string(duk_ctx, -1);
     void *_pyng_ctx_p;
     sscanf(_pyng_ctx_s, "%p", &_pyng_ctx_p);
     pyng_ctx_t *ctx = (pyng_ctx_t*) _pyng_ctx_p;
     PYNG_LOG_DEBUG("_cb_duk_load_module __pyng_ctx: %p", ctx);
-    #endif
 
-    module_id = duk_require_string(ctx, 0);
-    duk_get_prop_string(ctx, 2, "filename");
-    filename = duk_require_string(ctx, -1);
+    module_id = duk_require_string(duk_ctx, 0);
+    duk_get_prop_string(duk_ctx, 2, "filename");
+    filename = duk_require_string(duk_ctx, -1);
     PYNG_LOG_DEBUG("_cb_duk_load_module module_id: '%s', filename: '%s'", module_id, filename);
     
     // read file to buf
     uv_buf_t buf = pyng_ctx_read_file(ctx, module_id);
 
     if (buf.base == NULL) {
-        (void) duk_type_error(ctx, "cannot find module: '%s'", module_id);
+        (void) duk_type_error(duk_ctx, "cannot find module: '%s'", module_id);
         goto cleanup;
     }
 
     // FIXME: what happens with module_source memory allocated ?!
-    duk_push_lstring(ctx, buf.base, buf.len);
+    duk_push_lstring(duk_ctx, buf.base, buf.len);
 
     cleanup:
         ;
