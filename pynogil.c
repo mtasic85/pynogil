@@ -1,5 +1,14 @@
 #include "pynogil.h"
 
+static void _duk_fatal(void *udata, const char *msg) {
+    (void) udata;  /* ignored in this case, silence warning */
+
+    /* Note that 'msg' may be NULL. */
+    fprintf(stderr, "*** FATAL ERROR: %s\n", (msg ? msg : "no message"));
+    fflush(stderr);
+    abort();
+}
+
 duk_ret_t _cb_duk_resolve_module(duk_context *duk_ctx) {
     /*
      *  Entry stack: [ requested_id parent_id ]
@@ -9,7 +18,17 @@ duk_ret_t _cb_duk_resolve_module(duk_context *duk_ctx) {
     const char *resolved_id;
 
     /* Arrive at the canonical module ID somehow. */
-    duk_push_sprintf(duk_ctx, "%s.js", requested_id);
+    size_t requested_id_len = strlen(requested_id);
+    
+    // FIXME: check requested_id ?!
+    if (strncmp((requested_id + requested_id_len - 3), ".js", 3) == 0) {
+        // PYNG_LOG_DEBUG("with .js");
+        duk_push_sprintf(duk_ctx, "%s", requested_id);
+    } else {
+        // PYNG_LOG_DEBUG("without .js");
+        duk_push_sprintf(duk_ctx, "%s.js", requested_id);
+    }
+
     resolved_id = duk_get_string(duk_ctx, -1);
     PYNG_LOG_DEBUG("_cb_duk_resolve_module requested_id: '%s', parent_id: '%s', resolved_id: '%s'", requested_id, parent_id, resolved_id);
     return 1;  /*nrets*/
@@ -54,34 +73,6 @@ duk_ret_t _cb_duk_load_module(duk_context *duk_ctx) {
     return 1;  /*nrets*/
 }
 
-/*void async_exec_python_code(uv_async_t *async) {
-    uv_handle_t *handle = (uv_handle_t*) async;
-    uv_loop_t *loop = uv_handle_get_loop(handle);
-
-    // main path
-    const char *main_path = (const char*)uv_handle_get_data(handle);
-    
-    #ifdef DEBUG
-    printf("DEBUG main_path: '%s'\n", main_path);
-    #endif
-
-    // read main file
-    uv_buf_t buf = read_from_path(loop, main_path);
-    char *python_code = buf.base;
-
-    if (!python_code) {
-        printf("error, can't open/read file '%s'\n", main_path);
-        goto cleanup;
-    }
-    
-    // exec main file
-    exec_python_code(handle, buf);
-
-    cleanup:
-        if (python_code) free(python_code);
-        uv_close(handle, NULL);
-}*/
-
 /*
  * pyng_ctx_*
  */
@@ -101,7 +92,8 @@ pyng_ctx_t *pyng_ctx_new(void) {
     uv_loop_init(uv_loop);
 
     // duk_ctx
-    duk_context *duk_ctx = duk_create_heap_default();
+    // duk_context *duk_ctx = duk_create_heap_default();
+    duk_context *duk_ctx = duk_create_heap(NULL, NULL, NULL, NULL, _duk_fatal);
 
     if (!duk_ctx) {
         PYNG_ERROR("could not create duk_ctx");
@@ -264,12 +256,15 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
      * compile python to javascript
      */
     duk_eval_string(duk_ctx, "const r = 10; console.log(r); r;");
-    duk_eval_string(duk_ctx, "const a = require('./a');");
+    duk_eval_string(duk_ctx, "const a = require('./a.js');");
     duk_eval_string(duk_ctx, "console.log(a);");
-    // duk_eval_string(duk_ctx, "const lodash = require('./lodash.min');");
-    // duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
-    // duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
-    // duk_eval_string(duk_ctx, "aaa");
+    // duk_eval_string(duk_ctx, "const lodash = require('./lodash.min.js');");
+    duk_eval_string(duk_ctx, "const lodash = require('./lodash.js');");
+    duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
+    duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
+    // duk_eval_string(duk_ctx, "self = {};");
+    // duk_eval_string_noresult(duk_ctx, "const batavia = require('./batavia/dist/batavia.js');");
+    // duk_eval_string(duk_ctx, "console.log(batavia);");
     
     /* pop eval result */
     duk_pop(duk_ctx);

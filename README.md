@@ -32,6 +32,14 @@ python util/dist.py
 cd ..
 ```
 
+Manually build `batavia`:
+```
+cd batavia
+npm i
+npm run build
+cd ..
+```
+
 Build `pynogil`:
 ```
 make clean
