@@ -129,6 +129,7 @@ pyng_ctx_t *pyng_ctx_new(void) {
     /*
      * pyng_ctx
      */
+    ctx = (pyng_ctx_t*) malloc(sizeof(pyng_ctx_t));
     // put pyng_ctx in global namespace
     // FIXME: needs to be more secure
     duk_push_sprintf(duk_ctx, "%p", ctx);
@@ -137,7 +138,6 @@ pyng_ctx_t *pyng_ctx_new(void) {
     PYNG_LOG_DEBUG("duk_ctx created %p", duk_ctx);
 
     // ctx
-    ctx = (pyng_ctx_t*) malloc(sizeof(pyng_ctx_t));
     ctx->uv_loop = uv_loop;
     ctx->duk_ctx = duk_ctx;
     return ctx;
@@ -264,8 +264,8 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
      * compile python to javascript
      */
     duk_eval_string(duk_ctx, "const r = 10; console.log(r); r;");
-    // duk_eval_string(duk_ctx, "const a = require('./a');");
-    // duk_eval_string(duk_ctx, "console.log(a);");
+    duk_eval_string(duk_ctx, "const a = require('./a');");
+    duk_eval_string(duk_ctx, "console.log(a);");
     // duk_eval_string(duk_ctx, "const lodash = require('./lodash.min');");
     // duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
     // duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
