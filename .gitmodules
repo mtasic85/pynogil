@@ -7,3 +7,6 @@
 [submodule "batavia"]
 	path = batavia
 	url = git@github.com:beeware/batavia.git
+[submodule "python-compiler"]
+	path = python-compiler
+	url = git@github.com:pfalcon/python-compiler.git
