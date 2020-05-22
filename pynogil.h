@@ -11,6 +11,8 @@
 #include <duk_console.h>
 #include <duk_module_node.h>
 
+#include "duk_poll.h"
+
 #define DEBUG // FIXME: remove
 #define PYNG_DEBUG
 
@@ -27,6 +29,11 @@
 #endif
 
 #define PYNG_ERROR(fmt, ...) printf("error: " fmt "\n", ##__VA_ARGS__)
+
+/*
+ * extras
+ */
+static duk_ret_t native_print(duk_context *ctx);
 
 /*
  * duk_module_node

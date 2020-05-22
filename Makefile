@@ -8,7 +8,7 @@ DUKTAPE_PATH=$(shell pwd)/duktape/dist
 
 CFLAGS=-Wall -O0 -g -std=c11 -D_XOPEN_SOURCE=600 -I$(UV_PATH)/include -I$(DUKTAPE_PATH)/src -I$(DUKTAPE_PATH)/extras/console -I$(DUKTAPE_PATH)/extras/console -I$(DUKTAPE_PATH)/extras/module-node
 LDFLAGS=-L/usr/lib -lc -ldl -lpthread -lm -lrt
-SOURCES=$(DUKTAPE_PATH)/src/duktape.c $(DUKTAPE_PATH)/extras/console/duk_console.c $(DUKTAPE_PATH)/extras/module-node/duk_module_node.c pynogil.c main.c
+SOURCES=$(DUKTAPE_PATH)/src/duktape.c $(DUKTAPE_PATH)/extras/console/duk_console.c $(DUKTAPE_PATH)/extras/module-node/duk_module_node.c duk_poll.c pynogil.c main.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=pynogil
 

@@ -10,3 +10,6 @@
 [submodule "python-compiler"]
 	path = python-compiler
 	url = git@github.com:pfalcon/python-compiler.git
+[submodule "micropython"]
+	path = micropython
+	url = git@github.com:micropython/micropython.git

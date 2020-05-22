@@ -1,5 +1,11 @@
 #include "pynogil.h"
 
+static duk_ret_t native_print(duk_context *ctx) {
+  printf("%s", duk_to_string(ctx, 0));
+  return 0;  /* no return value (= undefined) */
+}
+
+
 static void _duk_fatal(void *udata, const char *msg) {
     (void) udata;  /* ignored in this case, silence warning */
 
@@ -101,6 +107,12 @@ pyng_ctx_t *pyng_ctx_new(void) {
         return NULL;
     }
 
+    /*
+     * extras
+     */
+    duk_push_c_function(duk_ctx, native_print, 1 /*nargs*/);
+    duk_put_global_string(duk_ctx, "_native_print");
+
     /* 
      * modeule-node
      * After initializing the Duktape heap or when creating a new
@@ -117,6 +129,11 @@ pyng_ctx_t *pyng_ctx_new(void) {
      * console
      */
     duk_console_init(duk_ctx, DUK_CONSOLE_PROXY_WRAPPER /*flags*/);
+
+    /*
+     * poll
+     */
+    poll_register(duk_ctx);
 
     /*
      * pyng_ctx
@@ -255,16 +272,29 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     /*
      * compile python to javascript
      */
-    duk_eval_string(duk_ctx, "const r = 10; console.log(r); r;");
-    duk_eval_string(duk_ctx, "const a = require('./a.js');");
-    duk_eval_string(duk_ctx, "console.log(a);");
-    // duk_eval_string(duk_ctx, "const lodash = require('./lodash.min.js');");
-    duk_eval_string(duk_ctx, "const lodash = require('./lodash.js');");
-    duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
-    duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
-    // duk_eval_string(duk_ctx, "self = {};");
-    // duk_eval_string_noresult(duk_ctx, "const batavia = require('./batavia/dist/batavia.js');");
-    // duk_eval_string(duk_ctx, "console.log(batavia);");
+    // duk_eval_string(duk_ctx, "const r = 10; console.log(r); r;");
+    // duk_eval_string(duk_ctx, "const a = require('./a.js');");
+    // duk_eval_string(duk_ctx, "console.log(a);");
+    
+    // duk_eval_string(duk_ctx, "const lodash = require('./lodash.js');");
+    // duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
+    // duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
+    
+    // duk_eval_string(duk_ctx, "const eventloop = require('./dummy_eventloop.js');");
+    duk_eval_string(duk_ctx, "const eventloop = require('./ecma_eventloop.js');");
+    duk_eval_string(duk_ctx, "const setTimeout = eventloop.setTimeout;");
+    duk_eval_string(duk_ctx, "const clearTimeout = eventloop.clearTimeout;");
+    duk_eval_string(duk_ctx, "const setInterval = eventloop.setInterval;");
+    duk_eval_string(duk_ctx, "const clearInterval = eventloop.clearInterval;");
+        
+    duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");
+    duk_eval_string(duk_ctx, "EventLoop.run();");
+
+    duk_eval_string(duk_ctx, "micropython._mp_js_init(64 * 1024);");
+    // duk_eval_string(duk_ctx, "micropython._mp_js_do_str(\"print('hello world')\n\");");
+    duk_eval_string(duk_ctx, "micropython._mp_js_do_str('1 + 2');");
+    // duk_eval_string(duk_ctx, "micropython._mp_js_do_str('print(1 + 2)');");
+    // duk_eval_string(duk_ctx, "EventLoop.run();");
     
     /* pop eval result */
     duk_pop(duk_ctx);
