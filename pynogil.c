@@ -276,25 +276,21 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     // duk_eval_string(duk_ctx, "const a = require('./a.js');");
     // duk_eval_string(duk_ctx, "console.log(a);");
     
-    // duk_eval_string(duk_ctx, "const lodash = require('./lodash.js');");
-    // duk_eval_string(duk_ctx, "console.log(lodash.range(10));");
-    // duk_eval_string(duk_ctx, "console.log(Number.isInteger(1));");
-    
-    // duk_eval_string(duk_ctx, "const eventloop = require('./dummy_eventloop.js');");
     duk_eval_string(duk_ctx, "const eventloop = require('./ecma_eventloop.js');");
     duk_eval_string(duk_ctx, "const setTimeout = eventloop.setTimeout;");
     duk_eval_string(duk_ctx, "const clearTimeout = eventloop.clearTimeout;");
     duk_eval_string(duk_ctx, "const setInterval = eventloop.setInterval;");
     duk_eval_string(duk_ctx, "const clearInterval = eventloop.clearInterval;");
-        
+    
+    /*
+     * micropython
+     */
     duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");
     duk_eval_string(duk_ctx, "EventLoop.run();");
-
     duk_eval_string(duk_ctx, "micropython._mp_js_init(64 * 1024);");
-    // duk_eval_string(duk_ctx, "micropython._mp_js_do_str(\"print('hello world')\n\");");
     duk_eval_string(duk_ctx, "micropython._mp_js_do_str('1 + 2');");
     // duk_eval_string(duk_ctx, "micropython._mp_js_do_str('print(1 + 2)');");
-    // duk_eval_string(duk_ctx, "EventLoop.run();");
+    duk_eval_string(duk_ctx, "EventLoop.run();");
     
     /* pop eval result */
     duk_pop(duk_ctx);

@@ -2,7 +2,11 @@
 
 Python With No-GIL (Global Interpreter Lock)
 
-This is an experiment, a hack. Do not use it in production.
+This is an experiment, a hack, proof-of-concept. Do not use it in production.
+
+*pynogil* is based on excellent async IO event loop library *libuv*, fantastic JavaScript engine *duktape* which comes with compiler and virtual machine, and awesome Python implementation *micropython*.
+
+Real heroes are ones who developed libuv, duktape and micropython. Without you this could not be possible. Thank you!
 
 
 ## Prerequisites
