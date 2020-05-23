@@ -270,12 +270,8 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_context *duk_ctx = ctx->duk_ctx;
 
     /*
-     * compile python to javascript
+     * eventloop
      */
-    // duk_eval_string(duk_ctx, "const r = 10; console.log(r); r;");
-    // duk_eval_string(duk_ctx, "const a = require('./a.js');");
-    // duk_eval_string(duk_ctx, "console.log(a);");
-    
     duk_eval_string(duk_ctx, "const eventloop = require('./ecma_eventloop.js');");
     duk_eval_string(duk_ctx, "const setTimeout = eventloop.setTimeout;");
     duk_eval_string(duk_ctx, "const clearTimeout = eventloop.clearTimeout;");
