@@ -1,11 +1,11 @@
 #include "pynogil.h"
 
-static duk_ret_t _duk_print(duk_context *ctx) {
+duk_ret_t _duk_print(duk_context *ctx) {
   printf("%s", duk_to_string(ctx, 0));
   return 0;  /* no return value (= undefined) */
 }
 
-static void _duk_fatal(void *udata, const char *msg) {
+void _duk_fatal(void *udata, const char *msg) {
     (void) udata;  /* ignored in this case, silence warning */
 
     /* Note that 'msg' may be NULL. */
@@ -45,7 +45,6 @@ duk_ret_t _cb_duk_load_module(duk_context *duk_ctx) {
      */
     const char *module_id;
     const char *filename;
-    char *module_source = NULL;
 
     // get pyng_ctx from global namespace
     // FIXME: needs to be more secure

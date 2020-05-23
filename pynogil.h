@@ -34,12 +34,12 @@
 /*
  * extras
  */
-/*static duk_ret_t _duk_print(duk_context *ctx);*/
+duk_ret_t _duk_print(duk_context *ctx);
 
 /*
  * duk_module_node
  */
-/*static void _duk_fatal(void *udata, const char *msg);*/
+void _duk_fatal(void *udata, const char *msg);
 duk_ret_t _cb_duk_resolve_module(duk_context *ctx);
 duk_ret_t _cb_duk_load_module(duk_context *ctx);
 

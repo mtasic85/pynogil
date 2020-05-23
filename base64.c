@@ -67,10 +67,10 @@ unsigned char *base64_decode(const char *data,
 
     for (int i = 0, j = 0; i < input_length;) {
 
-        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
+        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[(int)data[i++]];
 
         uint32_t triple = (sextet_a << 3 * 6)
         + (sextet_b << 2 * 6)
@@ -86,7 +86,7 @@ unsigned char *base64_decode(const char *data,
 }
 
 
-void build_decoding_table() {
+void build_decoding_table(void) {
     decoding_table = malloc(256);
 
     for (int i = 0; i < 64; i++)
@@ -94,6 +94,6 @@ void build_decoding_table() {
 }
 
 
-void base64_cleanup() {
+void base64_cleanup(void) {
     free(decoding_table);
 }
