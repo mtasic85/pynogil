@@ -17,7 +17,7 @@ git submodule init
 git submodule update
 ```
 
-Manually build `libuv` (GCC/Clang is requirement):
+Manually build `libuv` (GCC or Clang is requirement):
 ```
 cd libuv
 ./autogen.sh
@@ -38,13 +38,19 @@ python util/dist.py
 cd ..
 ```
 
-Manually build `micropython` (Emscripten is requirements):
+Manually build `micropython` (Emscripten is requirement):
+
 ```
-cp micropython_javascript_Makefile micropython/ports/javascript/
+./build_micropython.sh
+```
+
+Or:
+
+```
+cp misc/micropython_javascript_Makefile micropython/ports/javascript/
 cd micropython/ports/javascript
 make -f micropython_javascript_Makefile
 cd ../../..
-cp micropython/ports/javascript/build/micropython.js .
 ```
 
 
@@ -59,6 +65,12 @@ make
 
 ## Run
 
+Run repl:
+```
+./pynogil
+```
+
+Run file:
 ```
 ./pynogil example1.py
 ```

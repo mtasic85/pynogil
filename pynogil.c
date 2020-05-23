@@ -264,7 +264,7 @@ uv_buf_t pyng_ctx_read_file(pyng_ctx_t *ctx, const char *path) {
     return buf;
 }
 
-int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
+int _pyng_ctx_setup_polyfills(pyng_ctx_t *ctx) {
     /* duktape: context */
     duk_context *duk_ctx = ctx->duk_ctx;
 
@@ -317,6 +317,13 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_eval_string(duk_ctx, "process.versions.node = 'duktape';"); /* FIXME: pass duktape version */
     duk_eval_string(duk_ctx, "process.exitCode = 0;");
 
+    return 0;
+}
+
+int _pyng_ctx_setup_micropython(pyng_ctx_t *ctx) {
+    /* duktape: context */
+    duk_context *duk_ctx = ctx->duk_ctx;
+
     /*
      * micropython
      */
@@ -331,6 +338,14 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_eval_string(duk_ctx, "require('./micropython/ports/javascript/build/micropython.js');");
     /* requred by `micropython` */
     duk_eval_string(duk_ctx, "EventLoop.run();");
+
+    return 0;
+}
+
+int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
+    duk_context *duk_ctx = ctx->duk_ctx;
+    _pyng_ctx_setup_polyfills(ctx);
+    _pyng_ctx_setup_micropython(ctx);
 
     /* create python code, and embed python string into javascript string to be evaluated */
     // char *pyeval_code_pre = "mp_js_do_str(atob('";
@@ -354,5 +369,13 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     
     /* duktape: pop eval result */
     duk_pop(duk_ctx);
+    return 0;
+}
+
+int pyng_ctx_repl(pyng_ctx_t *ctx) {
+    duk_context *duk_ctx = ctx->duk_ctx;
+    _pyng_ctx_setup_polyfills(ctx);
+    _pyng_ctx_setup_micropython(ctx);
+    
     return 0;
 }

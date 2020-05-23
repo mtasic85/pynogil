@@ -57,6 +57,9 @@ void _pyng_ctx_del_duk_ctx(pyng_ctx_t *ctx);
 void pyng_ctx_del(pyng_ctx_t *ctx);
 int pyng_ctx_run_file(pyng_ctx_t *ctx, const char *path);
 uv_buf_t pyng_ctx_read_file(pyng_ctx_t *ctx, const char *path);
+int _pyng_ctx_setup_polyfills(pyng_ctx_t *ctx);
+int _pyng_ctx_setup_micropython(pyng_ctx_t *ctx);
 int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf);
+int pyng_ctx_repl(pyng_ctx_t *ctx);
 
 #endif
