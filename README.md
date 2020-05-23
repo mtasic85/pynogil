@@ -2,8 +2,10 @@
 
 Python With No-GIL (Global Interpreter Lock)
 
+This is an experiment, a hack. Do not use it in production.
 
-## Build
+
+## Prerequisites
 
 Init submodules:
 ```
@@ -11,7 +13,7 @@ git submodule init
 git submodule update
 ```
 
-Manually build `libuv`:
+Manually build `libuv` (GCC/Clang is requirement):
 ```
 cd libuv
 ./autogen.sh
@@ -20,7 +22,7 @@ make
 cd ..
 ```
 
-Manually build `duktape`.
+Manually build `duktape` (Python is requirement).
 On ArchLinux: `sudo pacman -S python2-virtualenv python2-pip`.
 
 ```
@@ -32,13 +34,17 @@ python util/dist.py
 cd ..
 ```
 
-Manually build `batavia`:
+Manually build `micropython` (Emscripten is requirements):
 ```
-cd batavia
-npm i
-npm run build
-cd ..
+cp micropython_javascript_Makefile micropython/ports/javascript/
+cd micropython/ports/javascript
+make -f micropython_javascript_Makefile
+cd ../../..
+cp micropython/ports/javascript/build/micropython.js .
 ```
+
+
+## Build
 
 Build `pynogil`:
 ```
@@ -51,7 +57,13 @@ make
 
 ```
 ./pynogil example1.py
+```
 
-# or
+
+## Build / Run
+
+You might find this useful if frequently update code and run new one:
+
+```
 clean; make clean; make; ./pynogil example1.py
 ```
