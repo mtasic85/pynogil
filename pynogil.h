@@ -11,6 +11,7 @@
 #include <duk_console.h>
 #include <duk_module_node.h>
 
+#include "base64.h"
 #include "duk_poll.h"
 
 #define DEBUG // FIXME: remove
@@ -33,7 +34,7 @@
 /*
  * extras
  */
-/*static duk_ret_t native_print(duk_context *ctx);*/
+/*static duk_ret_t _duk_print(duk_context *ctx);*/
 
 /*
  * duk_module_node

@@ -19,7 +19,8 @@
  *  near future displace as few elements in the array as possible.
  */
 
-var print = console.log;
+// var print = console.log;
+var print = function(data) {};
 
 EventLoop = {
     // timers

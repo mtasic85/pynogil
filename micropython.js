@@ -37,7 +37,7 @@ var mainProgram = function()
 
   if (typeof window === 'undefined' && require.main === module) {
       var fs = require('fs');
-      var stack_size = 1024 * 1024 * 1024;
+      var stack_size = 64 * 1024;
       var contents = '';
       var repl = true;
 

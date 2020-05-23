@@ -1,6 +1,6 @@
 #include "pynogil.h"
 
-static duk_ret_t native_print(duk_context *ctx) {
+static duk_ret_t _duk_print(duk_context *ctx) {
   printf("%s", duk_to_string(ctx, 0));
   return 0;  /* no return value (= undefined) */
 }
@@ -109,8 +109,8 @@ pyng_ctx_t *pyng_ctx_new(void) {
     /*
      * extras
      */
-    duk_push_c_function(duk_ctx, native_print, 1 /*nargs*/);
-    duk_put_global_string(duk_ctx, "_native_print");
+    duk_push_c_function(duk_ctx, _duk_print, 1 /*nargs*/);
+    duk_put_global_string(duk_ctx, "_duk_print");
 
     /* 
      * modeule-node
@@ -184,7 +184,7 @@ int pyng_ctx_run_file(pyng_ctx_t *ctx, const char *path) {
     int result;
 
     // read file to buf
-    PYNG_LOG_DEBUG("path: '%s'", path);
+    PYNG_LOG_DEBUG("python module path: '%s'", path);
     uv_buf_t main_module_buf = pyng_ctx_read_file(ctx, path);
     
     if (main_module_buf.base == NULL) {
@@ -270,6 +270,13 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_context *duk_ctx = ctx->duk_ctx;
 
     /*
+     * Uint8Array.copyWithin polyfill
+     */
+    duk_eval_string(duk_ctx, "require('./Uint8Array.copyWithin.js');");
+    duk_eval_string(duk_ctx, "var a = new Uint8Array([0]);");
+    duk_eval_string(duk_ctx, "console.log(a.copyWithin)");
+
+    /*
      * eventloop
      */
     duk_eval_string(duk_ctx, "const eventloop = require('./ecma_eventloop.js');");
@@ -283,6 +290,12 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
      */
     duk_eval_string(duk_ctx, "const self = this;");                 /* required for `promise-polyfill` */
     duk_eval_string(duk_ctx, "require('./promise-polyfill.js');");  /* inserts `Promise` into `self` */
+
+    /*
+     * base64 polyfill (atob)
+     */
+    duk_eval_string(duk_ctx, "var atob = null;");
+    duk_eval_string(duk_ctx, "require('./base64.js');");
     
     /*
      * Node's Buffer polyfill
@@ -299,7 +312,7 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_eval_string(duk_ctx, "process.stdin.setRawMode = function setRawMode(v) {};");
     duk_eval_string(duk_ctx, "process.stdout = {};");
     duk_eval_string(duk_ctx, "process.stdout.on = function(eventName, cb) {};");
-    duk_eval_string(duk_ctx, "process.stdout.write = function(data) { _native_print(data); };");
+    duk_eval_string(duk_ctx, "process.stdout.write = function(data) { _duk_print(data); };");
     duk_eval_string(duk_ctx, "process.on = function(eventName, cb) {};");
     duk_eval_string(duk_ctx, "process.exit = function(exitCode) { process.exitCode = exitCode; };");
     duk_eval_string(duk_ctx, "process.versions = {};");
@@ -317,10 +330,26 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_eval_string(duk_ctx, "var mp_keyboard_interrupt = null;");                  /* requred by `micropython` */
     duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");   /* requred by `micropython` */
     duk_eval_string(duk_ctx, "EventLoop.run();");                                   /* requred by `micropython` */
+
+    /* create python code, and embed python string into javascript string to be evaluated */
+    char *pyeval_code_pre = "mp_js_do_str(atob('";
+    size_t pyeval_base64_code_len = 0;
+    char *pyeval_base64_code = base64_encode(buf.base, buf.len, &pyeval_base64_code_len);
+    char *pyeval_code_post = "'));";
+    size_t pyeval_code_len = strlen(pyeval_code_pre) + pyeval_base64_code_len + strlen(pyeval_code_post);
+    char *pyeval_code = (char*)calloc(pyeval_code_len, sizeof(char));
+    strncpy(pyeval_code, pyeval_code_pre, strlen(pyeval_code_pre));
+    strncpy(pyeval_code + strlen(pyeval_code_pre), pyeval_base64_code, pyeval_base64_code_len);
+    strncpy(pyeval_code + strlen(pyeval_code_pre) + pyeval_base64_code_len, pyeval_code_post, strlen(pyeval_code_post));
     
-    duk_eval_string(duk_ctx, "mp_js_init(1024 * 1024 * 1024);");
-    duk_eval_string(duk_ctx, "mp_js_do_str('print(1 + 2)');");
+    /* evaluate python code */
+    duk_eval_string(duk_ctx, "mp_js_init(1024 * 1024);");
+    duk_eval_lstring(duk_ctx, pyeval_code, pyeval_code_len);
     duk_eval_string(duk_ctx, "EventLoop.run();");
+
+    /* free python code */
+    free(pyeval_code);
+    free(pyeval_base64_code);
     
     /* duktape: pop eval result */
     duk_pop(duk_ctx);
