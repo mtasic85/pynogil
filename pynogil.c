@@ -5,7 +5,6 @@ static duk_ret_t native_print(duk_context *ctx) {
   return 0;  /* no return value (= undefined) */
 }
 
-
 static void _duk_fatal(void *udata, const char *msg) {
     (void) udata;  /* ignored in this case, silence warning */
 
@@ -267,6 +266,7 @@ uv_buf_t pyng_ctx_read_file(pyng_ctx_t *ctx, const char *path) {
 }
 
 int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
+    /* duktape: context */
     duk_context *duk_ctx = ctx->duk_ctx;
 
     /*
@@ -277,18 +277,52 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     duk_eval_string(duk_ctx, "const clearTimeout = eventloop.clearTimeout;");
     duk_eval_string(duk_ctx, "const setInterval = eventloop.setInterval;");
     duk_eval_string(duk_ctx, "const clearInterval = eventloop.clearInterval;");
+
+    /*
+     * promise-polyfill
+     */
+    duk_eval_string(duk_ctx, "const self = this;");                 /* required for `promise-polyfill` */
+    duk_eval_string(duk_ctx, "require('./promise-polyfill.js');");  /* inserts `Promise` into `self` */
     
+    /*
+     * Node's Buffer polyfill
+     */
+    duk_eval_string(duk_ctx, "Buffer.alloc = function Buffer_alloc(size) { return new Buffer(size); };");
+    
+    /*
+     * Node's process polyfill
+     */
+    duk_eval_string(duk_ctx, "const process = {};");
+    duk_eval_string(duk_ctx, "process.argv = ['pynogil'];"); /* FIXME: pass propper argv */
+    duk_eval_string(duk_ctx, "process.stdin = {};");
+    duk_eval_string(duk_ctx, "process.stdin.fd = 0;");
+    duk_eval_string(duk_ctx, "process.stdin.setRawMode = function setRawMode(v) {};");
+    duk_eval_string(duk_ctx, "process.stdout = {};");
+    duk_eval_string(duk_ctx, "process.stdout.on = function(eventName, cb) {};");
+    duk_eval_string(duk_ctx, "process.stdout.write = function(data) { _native_print(data); };");
+    duk_eval_string(duk_ctx, "process.on = function(eventName, cb) {};");
+    duk_eval_string(duk_ctx, "process.exit = function(exitCode) { process.exitCode = exitCode; };");
+    duk_eval_string(duk_ctx, "process.versions = {};");
+    duk_eval_string(duk_ctx, "process.versions.node = 'duktape';"); /* FIXME: pass duktape version */
+    duk_eval_string(duk_ctx, "process.exitCode = 0;");
+
     /*
      * micropython
      */
-    duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");
-    duk_eval_string(duk_ctx, "EventLoop.run();");
-    duk_eval_string(duk_ctx, "micropython._mp_js_init(64 * 1024);");
-    duk_eval_string(duk_ctx, "micropython._mp_js_do_str('1 + 2');");
-    // duk_eval_string(duk_ctx, "micropython._mp_js_do_str('print(1 + 2)');");
+    duk_eval_string(duk_ctx, "var mp_js_init = null;");                             /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_js_init_repl = null;");                        /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_js_do_str = null;");                           /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_js_process_char = null;");                     /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_hal_get_interrupt_char = null;");              /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_keyboard_interrupt = null;");                  /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");   /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "EventLoop.run();");                                   /* requred by `micropython` */
+    
+    duk_eval_string(duk_ctx, "mp_js_init(1024 * 1024 * 1024);");
+    duk_eval_string(duk_ctx, "mp_js_do_str('print(1 + 2)');");
     duk_eval_string(duk_ctx, "EventLoop.run();");
     
-    /* pop eval result */
+    /* duktape: pop eval result */
     duk_pop(duk_ctx);
     return 0;
 }

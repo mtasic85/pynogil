@@ -1,3 +1,6 @@
+#ifndef PYNOGIL_DUK_POLL_H
+#define PYNOGIL_DUK_POLL_H
+
 #define _GNU_SOURCE
 #include <errno.h>
 #include <string.h>
@@ -16,3 +19,5 @@
 #include <duktape.h>
 
 void poll_register(duk_context *ctx);
+
+#endif
