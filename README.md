@@ -69,5 +69,5 @@ make
 You might find this useful if frequently update code and run new one:
 
 ```
-clean; make clean; make; ./pynogil example1.py
+clean; make clean; make; ./pynogil examples/example0.py
 ```

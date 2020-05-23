@@ -272,14 +272,12 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     /*
      * Uint8Array.copyWithin polyfill
      */
-    duk_eval_string(duk_ctx, "require('./Uint8Array.copyWithin.js');");
-    duk_eval_string(duk_ctx, "var a = new Uint8Array([0]);");
-    duk_eval_string(duk_ctx, "console.log(a.copyWithin)");
+    duk_eval_string(duk_ctx, "require('./polyfills/Uint8Array.copyWithin.js');");
 
     /*
      * eventloop
      */
-    duk_eval_string(duk_ctx, "const eventloop = require('./ecma_eventloop.js');");
+    duk_eval_string(duk_ctx, "const eventloop = require('./polyfills/ecma_eventloop.js');");
     duk_eval_string(duk_ctx, "const setTimeout = eventloop.setTimeout;");
     duk_eval_string(duk_ctx, "const clearTimeout = eventloop.clearTimeout;");
     duk_eval_string(duk_ctx, "const setInterval = eventloop.setInterval;");
@@ -288,20 +286,21 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     /*
      * promise-polyfill
      */
-    duk_eval_string(duk_ctx, "const self = this;");                 /* required for `promise-polyfill` */
-    duk_eval_string(duk_ctx, "require('./promise-polyfill.js');");  /* inserts `Promise` into `self` */
+    /* required for `promise-polyfill` */
+    duk_eval_string(duk_ctx, "const self = this;");
+    /* inserts `Promise` into `self` */
+    duk_eval_string(duk_ctx, "require('./polyfills/promise-polyfill.js');");
 
     /*
-     * base64 polyfill (atob)
+     * base64 polyfill (atob, btoa)
      */
-    duk_eval_string(duk_ctx, "var atob = null;");
-    duk_eval_string(duk_ctx, "require('./base64.js');");
+    duk_eval_string(duk_ctx, "require('./polyfills/base64.js');");
     
     /*
      * Node's Buffer polyfill
      */
     duk_eval_string(duk_ctx, "Buffer.alloc = function Buffer_alloc(size) { return new Buffer(size); };");
-    
+
     /*
      * Node's process polyfill
      */
@@ -322,34 +321,37 @@ int pyng_ctx_eval_buf(pyng_ctx_t *ctx, uv_buf_t buf) {
     /*
      * micropython
      */
-    duk_eval_string(duk_ctx, "var mp_js_init = null;");                             /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "var mp_js_init_repl = null;");                        /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "var mp_js_do_str = null;");                           /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "var mp_js_process_char = null;");                     /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "var mp_hal_get_interrupt_char = null;");              /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "var mp_keyboard_interrupt = null;");                  /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "const micropython = require('./micropython.js');");   /* requred by `micropython` */
-    duk_eval_string(duk_ctx, "EventLoop.run();");                                   /* requred by `micropython` */
+    /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "var mp_js_init = null;");                             
+    duk_eval_string(duk_ctx, "var mp_js_init_repl = null;");
+    duk_eval_string(duk_ctx, "var mp_js_do_str = null;");
+    duk_eval_string(duk_ctx, "var mp_js_process_char = null;");
+    duk_eval_string(duk_ctx, "var mp_hal_get_interrupt_char = null;");
+    duk_eval_string(duk_ctx, "var mp_keyboard_interrupt = null;");
+    /* micropython` */
+    duk_eval_string(duk_ctx, "require('./micropython/ports/javascript/build/micropython.js');");
+    /* requred by `micropython` */
+    duk_eval_string(duk_ctx, "EventLoop.run();");
 
     /* create python code, and embed python string into javascript string to be evaluated */
-    char *pyeval_code_pre = "mp_js_do_str(atob('";
-    size_t pyeval_base64_code_len = 0;
-    char *pyeval_base64_code = base64_encode(buf.base, buf.len, &pyeval_base64_code_len);
-    char *pyeval_code_post = "'));";
-    size_t pyeval_code_len = strlen(pyeval_code_pre) + pyeval_base64_code_len + strlen(pyeval_code_post);
-    char *pyeval_code = (char*)calloc(pyeval_code_len, sizeof(char));
-    strncpy(pyeval_code, pyeval_code_pre, strlen(pyeval_code_pre));
-    strncpy(pyeval_code + strlen(pyeval_code_pre), pyeval_base64_code, pyeval_base64_code_len);
-    strncpy(pyeval_code + strlen(pyeval_code_pre) + pyeval_base64_code_len, pyeval_code_post, strlen(pyeval_code_post));
+    // char *pyeval_code_pre = "mp_js_do_str(atob('";
+    // size_t pyeval_base64_code_len = 0;
+    // char *pyeval_base64_code = base64_encode(buf.base, buf.len, &pyeval_base64_code_len);
+    // char *pyeval_code_post = "'));";
+    // size_t pyeval_code_len = strlen(pyeval_code_pre) + pyeval_base64_code_len + strlen(pyeval_code_post);
+    // char *pyeval_code = (char*)calloc(pyeval_code_len, sizeof(char));
+    // strncpy(pyeval_code, pyeval_code_pre, strlen(pyeval_code_pre));
+    // strncpy(pyeval_code + strlen(pyeval_code_pre), pyeval_base64_code, pyeval_base64_code_len);
+    // strncpy(pyeval_code + strlen(pyeval_code_pre) + pyeval_base64_code_len, pyeval_code_post, strlen(pyeval_code_post));
     
     /* evaluate python code */
     duk_eval_string(duk_ctx, "mp_js_init(1024 * 1024);");
-    duk_eval_lstring(duk_ctx, pyeval_code, pyeval_code_len);
-    duk_eval_string(duk_ctx, "EventLoop.run();");
+    // duk_eval_lstring(duk_ctx, pyeval_code, pyeval_code_len);
+    // duk_eval_string(duk_ctx, "EventLoop.run();");
 
     /* free python code */
-    free(pyeval_code);
-    free(pyeval_base64_code);
+    // free(pyeval_code);
+    // free(pyeval_base64_code);
     
     /* duktape: pop eval result */
     duk_pop(duk_ctx);
