@@ -19,38 +19,20 @@ git submodule update
 
 Manually build `libuv` (GCC or Clang is requirement):
 ```
-cd libuv
-./autogen.sh
-./configure
-make
-cd ..
+./build_libuv.sh
 ```
 
 Manually build `duktape` (Python is requirement).
 On ArchLinux: `sudo pacman -S python2-virtualenv python2-pip`.
 
 ```
-cd duktape
-virtualenv2 venv
-source venv/bin/activate
-pip install pyyaml
-python util/dist.py
-cd ..
+./build_duktape.sh
 ```
 
 Manually build `micropython` (Emscripten is requirement):
 
 ```
 ./build_micropython.sh
-```
-
-Or:
-
-```
-cp misc/micropython_javascript_Makefile micropython/ports/javascript/
-cd micropython/ports/javascript
-make -f micropython_javascript_Makefile
-cd ../../..
 ```
 
 
